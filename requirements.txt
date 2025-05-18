@@ -1,0 +1,6 @@
+PyInstaller==4.5.1
+SQLAlchemy==1.4.46
+openpyxl==3.0.10
+ttkthemes==3.2.2
+pillow>=10,<11
+babel==2.9.1
