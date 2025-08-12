@@ -56,7 +56,7 @@
    ```
 4. 运行主程序
    ```powershell
-   python SalaryEmailRun.py
+   python main.py
    ```
 5. 打包发布
    ```powershell
