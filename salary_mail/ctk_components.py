@@ -96,16 +96,17 @@ class CTKTreeview(ctk.CTkFrame):
 
         # 配置Treeview样式
         style.configure("CTK.Treeview",
-                       rowheight=35,
+                       rowheight=42,
                        background=bg_color,
                        fieldbackground=field_bg,
                        foreground=fg_color,
                        borderwidth=1,
                        relief="solid",
-                       font=('Microsoft YaHei UI', 11))
+                       font=('Microsoft YaHei UI', 14))
 
         style.configure("CTK.Treeview.Heading",
-                       font=('Microsoft YaHei UI', 12, 'bold'),
+                       padding=[10, 5, 10, 5],
+                       font=('Microsoft YaHei UI', 16, 'bold'),
                        background=heading_bg if appearance_mode == "Dark" else field_bg,
                        foreground=heading_fg if appearance_mode == "Dark" else fg_color,
                        borderwidth=1,

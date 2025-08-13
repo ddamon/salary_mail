@@ -406,7 +406,7 @@ class CTKEmployeeManageWin(ctk.CTkToplevel):
             command=self.delete_employee,
             width=80,
             height=40,
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=12, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14, weight="bold"),
             fg_color="#F44336",
             hover_color="#D32F2F",
 
@@ -421,7 +421,7 @@ class CTKEmployeeManageWin(ctk.CTkToplevel):
         search_label = ctk.CTkLabel(
             search_frame,
             text="搜索：",
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=12, weight="bold")
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14, weight="bold")
         )
         search_label.pack(side="left", padx=(0, 5))
 
@@ -439,7 +439,7 @@ class CTKEmployeeManageWin(ctk.CTkToplevel):
         self.search_count_label = ctk.CTkLabel(
             search_frame,
             text="",
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=10),
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=12),
             text_color="gray"
         )
         self.search_count_label.pack(side="left", padx=(10, 0))
@@ -454,7 +454,6 @@ class CTKEmployeeManageWin(ctk.CTkToplevel):
         list_content = ctk.CTkFrame(list_frame, fg_color="transparent")
         list_content.pack(fill="both", expand=True, padx=15, pady=15)
 
-        # 恢复使用CTKTreeview，与工资管理页面保持一致
         self.employee_tree = CTKTreeview(
             list_content,
             columns=self.columns,
@@ -494,7 +493,7 @@ class CTKEmployeeManageWin(ctk.CTkToplevel):
     def perform_search(self, search_text):
         """执行搜索"""
         if not search_text:
-            self.load_employees()
+            # self.load_employees()
             return
 
         # 清空现有数据

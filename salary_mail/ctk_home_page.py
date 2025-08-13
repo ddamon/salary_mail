@@ -240,7 +240,6 @@ class CTKHomePage(ctk.CTk):
             # 方法1：直接使用Windows的zoomed状态（最可靠）
             self.state('zoomed')
             self.is_fullscreen = True
-            print("使用zoomed状态设置全屏")
             
             # 显示窗口
             self.deiconify()
@@ -282,7 +281,6 @@ class CTKHomePage(ctk.CTk):
                 
             # 如果当前不是全屏状态，重新设置
             if not self.is_fullscreen or self.state() != 'zoomed':
-                print("UI加载后检测到非全屏状态，重新设置全屏")
                 self.state('zoomed')
                 self.is_fullscreen = True
                 

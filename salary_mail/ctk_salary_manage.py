@@ -130,7 +130,7 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
             command=self.import_salary_data,
             width=150,
             height=45,
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=12, weight="bold")
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14, weight="bold")
         )
         import_btn.pack(side="left", padx=(0, 15))
         
@@ -141,7 +141,7 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
         month_label = ctk.CTkLabel(
             month_frame,
             text="选择月份：",
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=12, weight="bold")
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14, weight="bold")
         )
         month_label.pack(side="left", padx=(0, 10))
         
@@ -153,7 +153,7 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
             width=120,
             height=35,
             state="readonly",
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=12)
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14)
         )
         self.month_combo.pack(side="left")
         
@@ -168,7 +168,7 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
             command=self.send_selected_salary,
             width=120,
             height=45,
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=12, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14, weight="bold"),
             fg_color="#4CAF50",
             hover_color="#45a049"
         )
@@ -181,7 +181,7 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
             command=self.send_all_salary,
             width=120,
             height=45,
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=12, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14, weight="bold"),
             fg_color="#2196F3",
             hover_color="#1976D2"
         )
