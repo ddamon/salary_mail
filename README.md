@@ -1,17 +1,17 @@
 # 工资条发送系统
 
-一个基于 Python 和 Tkinter 开发的桌面工资条邮件批量发送系统，支持员工信息管理、工资数据导入、邮件模板自定义与批量发送，适用于中小企业财务或人事场景。
+一个基于 Python 和 PySide6 开发的现代化桌面工资条邮件批量发送系统，支持员工信息管理、工资数据导入、邮件模板自定义与批量发送，适用于中小企业财务或人事场景。
 
 ---
 
 ## 目录结构
 
 - `salary_mail/`：主程序代码
-  - `EmployeeManageWin.py`：员工管理窗口
-  - `SalaryManageWin.py`：工资管理窗口
-  - `home_page.py`：主界面
-  - `login_window.py`：登录窗口
-  - `setting_box.py`：邮箱、模板、信息管理
+  - `pyside_employee_manage.py`：员工管理窗口
+  - `pyside_salary_manage.py`：工资管理窗口
+  - `pyside_home_page.py`：主界面
+  - `pyside_login_window.py`：登录窗口
+  - `pyside_settings.py`：邮箱、模板、信息管理
   - `db_instance.py`：数据库模型与初始化
   - `assets/`：图标、logo等资源
   - `utils/`：工具模块
@@ -32,7 +32,7 @@
 - 发送状态跟踪
 - 系统参数、邮箱、公司信息管理
 - 支持密码修改、公司名称自定义
-- 现代化美观 UI，支持主题切换
+- 现代化美观 PySide6 UI，原生Qt界面体验
 
 ---
 
@@ -54,6 +54,7 @@
    ```powershell
    python -m pip install -r requirements.txt
    ```
+   主要依赖：PySide6（Qt6界面框架）、SQLAlchemy（数据库ORM）、openpyxl（Excel处理）
 4. 运行主程序
    ```powershell
    python main.py
