@@ -144,8 +144,8 @@ class CTKThemeSelector(ctk.CTkToplevel):
         self.transient(parent)
         self.grab_set()
         
-        # 居中显示
-        self.center_on_parent(parent)
+        # 确保窗口在父窗口中心显示
+        self.after(100, lambda: self._center_window_on_parent_with_theme_manager(parent))
         
         self.parent = parent
         self.theme_manager = theme_manager
@@ -156,19 +156,14 @@ class CTKThemeSelector(ctk.CTkToplevel):
         # 设置焦点
         self.focus_force()
     
-    def center_on_parent(self, parent):
-        """在父窗口中心显示"""
-        self.update_idletasks()
-        
-        parent_x = parent.winfo_x()
-        parent_y = parent.winfo_y()
-        parent_width = parent.winfo_width()
-        parent_height = parent.winfo_height()
-        
-        x = parent_x + (parent_width - self.winfo_width()) // 2
-        y = parent_y + (parent_height - self.winfo_height()) // 2
-        
-        self.geometry(f"+{x}+{y}")
+    def _center_window_on_parent_with_theme_manager(self, parent):
+        """使用主题管理器在父窗口中心显示 - 支持高DPI缩放"""
+        try:
+            # 导入主题管理器（避免循环导入）
+            from salary_mail.theme_config import theme_manager as responsive_theme_manager
+            responsive_theme_manager.center_window_on_parent(self, parent)
+        except Exception as e:
+            print(f"主题选择器窗口居中失败: {e}")
     
     def setup_ui(self):
         """设置UI"""

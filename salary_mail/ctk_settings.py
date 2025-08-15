@@ -16,6 +16,7 @@ from datetime import datetime
 
 from salary_mail.db_instance import SalaryEmail, User
 from salary_mail.ctk_components import CTKMessageBox, CTKWindowSizeManager
+from salary_mail.theme_config import theme_manager as responsive_theme_manager
 
 class CTKEmailSettingWin(ctk.CTkToplevel):
     """邮箱设置窗口"""
@@ -24,38 +25,26 @@ class CTKEmailSettingWin(ctk.CTkToplevel):
         super().__init__(parent)
         
         self.title('邮箱设置')
-        # 使用窗口大小管理器适配高分辨率，并添加滚动框架
-        CTKWindowSizeManager.adjust_window_size(self, 550, 600, 500, 550)
+        
+        # 设置响应式窗口配置
+        self.responsive_config = responsive_theme_manager.setup_responsive_window(self, 'dialog_window')
         self.resizable(True, True)
         
         # 设置窗口属性
         self.transient(parent)
         self.grab_set()
         
-        # 居中显示
-        self.center_on_parent(parent)
-        
         self.parent = parent
         self.db = parent.db
         
         self.setup_ui()
         
+        # 确保窗口在父窗口中心显示
+        self.after(100, lambda: responsive_theme_manager.center_window_on_parent(self, parent))
+        
         # 设置焦点
         self.focus_force()
     
-    def center_on_parent(self, parent):
-        """在父窗口中心显示"""
-        self.update_idletasks()
-        
-        parent_x = parent.winfo_x()
-        parent_y = parent.winfo_y()
-        parent_width = parent.winfo_width()
-        parent_height = parent.winfo_height()
-        
-        x = parent_x + (parent_width - self.winfo_width()) // 2
-        y = parent_y + (parent_height - self.winfo_height()) // 2
-        
-        self.geometry(f"+{x}+{y}")
     
     def setup_ui(self):
         """设置UI"""
@@ -383,8 +372,8 @@ class CTKTemplateSettingWin(ctk.CTkToplevel):
         self.transient(parent)
         self.grab_set()
         
-        # 居中显示
-        self.center_on_parent(parent)
+        # 确保窗口在父窗口中心显示
+        self.after(100, lambda: responsive_theme_manager.center_window_on_parent(self, parent))
         
         self.parent = parent
         self.db = parent.db
@@ -394,19 +383,6 @@ class CTKTemplateSettingWin(ctk.CTkToplevel):
         # 设置焦点
         self.focus_force()
     
-    def center_on_parent(self, parent):
-        """在父窗口中心显示"""
-        self.update_idletasks()
-        
-        parent_x = parent.winfo_x()
-        parent_y = parent.winfo_y()
-        parent_width = parent.winfo_width()
-        parent_height = parent.winfo_height()
-        
-        x = parent_x + (parent_width - self.winfo_width()) // 2
-        y = parent_y + (parent_height - self.winfo_height()) // 2
-        
-        self.geometry(f"+{x}+{y}")
     
     def setup_ui(self):
         """设置UI"""
@@ -767,8 +743,8 @@ class CTKInfoManageWin(ctk.CTkToplevel):
         self.transient(parent)
         self.grab_set()
         
-        # 居中显示
-        self.center_on_parent(parent)
+        # 确保窗口在父窗口中心显示
+        self.after(100, lambda: responsive_theme_manager.center_window_on_parent(self, parent))
         
         self.parent = parent
         self.db = parent.db
@@ -779,19 +755,6 @@ class CTKInfoManageWin(ctk.CTkToplevel):
         # 设置焦点
         self.focus_force()
     
-    def center_on_parent(self, parent):
-        """在父窗口中心显示"""
-        self.update_idletasks()
-        
-        parent_x = parent.winfo_x()
-        parent_y = parent.winfo_y()
-        parent_width = parent.winfo_width()
-        parent_height = parent.winfo_height()
-        
-        x = parent_x + (parent_width - self.winfo_width()) // 2
-        y = parent_y + (parent_height - self.winfo_height()) // 2
-        
-        self.geometry(f"+{x}+{y}")
     
     def setup_ui(self):
         """设置UI"""

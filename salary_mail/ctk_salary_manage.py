@@ -16,6 +16,7 @@ from smtplib import SMTP, SMTP_SSL
 
 from salary_mail.db_instance import Employee, SalaryEmail, SalaryRecord
 from salary_mail.ctk_components import CTKTreeview, CTKMessageBox, CTKFileDialog, CTKProgressDialog, CTKWindowSizeManager
+from salary_mail.theme_config import theme_manager as responsive_theme_manager
 
 class CTKSalaryManageWin(ctk.CTkToplevel):
     """工资管理窗口"""
@@ -24,6 +25,10 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
         super().__init__(parent)
         
         self.title('工资管理')
+        
+        # 设置响应式窗口配置
+        self.responsive_config = responsive_theme_manager.setup_responsive_window(self, 'main_window')
+        
         # 设置为全屏显示
         self.set_fullscreen_window()
         
@@ -77,28 +82,27 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
             
         except Exception as e:
             print(f"设置工资管理窗口全屏失败: {e}")
-            # 备用方案：使用窗口大小管理器
-            CTKWindowSizeManager.adjust_window_size(self, 1400, 850, 1200, 750, (0.95, 0.85))
+            # 备用方案：使用响应式配置的主窗口尺寸
+            config = self.responsive_config
+            if config and 'main_window' in config:
+                window_config = config['main_window']
+                width = window_config.get('width', 1200)
+                height = window_config.get('height', 800)
+                self.geometry(f"{width}x{height}")
+                self.center_window()
     
-    def center_on_parent(self, parent):
-        """在父窗口中心显示"""
-        self.update_idletasks()
-        
-        parent_x = parent.winfo_x()
-        parent_y = parent.winfo_y()
-        parent_width = parent.winfo_width()
-        parent_height = parent.winfo_height()
-        
-        x = parent_x + (parent_width - self.winfo_width()) // 2
-        y = parent_y + (parent_height - self.winfo_height()) // 2
-        
-        self.geometry(f"+{x}+{y}")
+    def center_window(self):
+        """窗口居中显示 - 支持高DPI缩放"""
+        responsive_theme_manager.center_window_on_screen(self)
     
     def setup_ui(self):
-        """设置UI"""
+        """设置响应式UI"""
+        # 获取响应式配置
+        padding = responsive_theme_manager.get_size('padding_medium')
+        
         # 主容器
         main_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
-        main_frame.pack(fill="both", expand=True, padx=15, pady=15)
+        main_frame.pack(fill="both", expand=True, padx=padding, pady=padding)
         
         # 顶部工具栏
         self.create_toolbar(main_frame)
@@ -189,11 +193,17 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
     
     def create_salary_list(self, parent):
         """创建工资列表"""
-        # 列表容器 - 深色模式下使用深色背景
-        list_frame = ctk.CTkFrame(parent, corner_radius=10)
+        # 获取当前主题模式
+        appearance_mode = ctk.get_appearance_mode()
+        
+        # 列表容器 - 根据主题设置背景色
+        if appearance_mode == "Dark":
+            list_frame = ctk.CTkFrame(parent, corner_radius=10, fg_color="#212121")
+        else:
+            list_frame = ctk.CTkFrame(parent, corner_radius=10, fg_color="#F8F9FA")
         list_frame.pack(fill="both", expand=True)
         
-        # 列表内容 - 深色模式下使用深色背景
+        # 列表内容 - 使用透明背景让容器背景透出
         list_content = ctk.CTkFrame(list_frame, fg_color="transparent")
         list_content.pack(fill="both", expand=True, padx=15, pady=15)
         
@@ -205,8 +215,55 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
         )
         self.salary_tree.pack(fill="both", expand=True)
         
+        # 保存容器引用以便主题切换时更新
+        self.list_frame = list_frame
+        
+        # 启动主题监听
+        self._theme_monitor_active = True
+        self.monitor_theme_changes()
+        
         # 绑定选择事件
         self.salary_tree.bind('<<TreeviewSelect>>', self.on_select)
+    
+    def monitor_theme_changes(self):
+        """监听主题变化并更新容器背景色"""
+        try:
+            # 检查窗口是否仍然存在
+            if not self.winfo_exists():
+                return
+                
+            current_mode = ctk.get_appearance_mode()
+            if not hasattr(self, '_last_theme_mode'):
+                self._last_theme_mode = current_mode
+            elif self._last_theme_mode != current_mode:
+                self._last_theme_mode = current_mode
+                self.update_container_colors()
+            
+            # 每500ms检查一次
+            if hasattr(self, '_theme_monitor_active') and self._theme_monitor_active:
+                self.after(500, self.monitor_theme_changes)
+        except:
+            # 如果出现错误，停止监听
+            pass
+    
+    def update_container_colors(self):
+        """更新容器背景色"""
+        appearance_mode = ctk.get_appearance_mode()
+        if hasattr(self, 'list_frame'):
+            if appearance_mode == "Dark":
+                self.list_frame.configure(fg_color="#212121")
+            else:
+                self.list_frame.configure(fg_color="#F8F9FA")
+    
+    def stop_theme_monitoring(self):
+        """停止主题监听"""
+        self._theme_monitor_active = False
+    
+    def destroy(self):
+        """重写destroy方法，确保停止主题监听"""
+        if hasattr(self, '_theme_monitor_active'):
+            self.stop_theme_monitoring()
+        super().destroy()
     
     def load_salary_months(self):
         """加载工资月份列表"""
@@ -291,6 +348,10 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
         progress_dialog = CTKProgressDialog(self, "导入工资数据", "正在处理Excel文件...")
         
         def import_worker():
+            # 在工作线程中创建新的数据库会话
+            from salary_mail.db_instance import set_db
+            worker_db = set_db()
+            
             try:
                 wb = openpyxl.load_workbook(file_path)
                 sheet = wb.active
@@ -379,7 +440,7 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
                             raise ValueError("员工编号不能为空")
                         
                         # 检查员工是否存在
-                        employee = self.db.query(Employee)\
+                        employee = worker_db.query(Employee)\
                             .filter_by(employee_id=employee_id, status=1).first()
                         if not employee:
                             # 如果员工不存在，自动创建
@@ -389,10 +450,10 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
                                 email='',
                                 status=1
                             )
-                            self.db.add(employee)
+                            worker_db.add(employee)
                         
                         # 检查是否已存在该月工资记录
-                        existing = self.db.query(SalaryRecord)\
+                        existing = worker_db.query(SalaryRecord)\
                             .filter_by(employee_id=employee_id, salary_month=salary_month).first()
                         if existing:
                             record = existing
@@ -413,14 +474,14 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
                                 setattr(record, field_mapping[field], value)
                         
                         record.send_status = 0  # 重置发送状态
-                        self.db.add(record)
+                        worker_db.add(record)
                         success_count += 1
                         
                     except Exception as e:
                         error_count += 1
                         continue
                 
-                self.db.commit()
+                worker_db.commit()
                 
                 # 关闭进度对话框
                 self.after(0, lambda: progress_dialog.destroy())
@@ -433,9 +494,13 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
                 self.after(200, lambda: CTKMessageBox.show_info(self, "导入结果", result_msg))
                 
             except Exception as e:
+                error_msg = f"导入过程出错：\n{str(e)}"
                 self.after(0, lambda: progress_dialog.destroy())
-                self.after(100, lambda: CTKMessageBox.show_error(self, "导入失败", f"导入过程出错：\n{str(e)}"))
-                self.db.rollback()
+                self.after(100, lambda: CTKMessageBox.show_error(self, "导入失败", error_msg))
+                worker_db.rollback()
+            finally:
+                # 确保关闭工作线程的数据库连接
+                worker_db.close()
         
         # 在后台线程中执行导入
         import_thread = threading.Thread(target=import_worker)
@@ -480,14 +545,18 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
         progress_dialog = CTKProgressDialog(self, "发送工资条", "正在准备发送...")
         
         def send_worker():
+            # 在工作线程中创建新的数据库会话
+            from salary_mail.db_instance import set_db
+            worker_db = set_db()
+            
             try:
                 # 获取邮件配置
-                sender = self.db.query(SalaryEmail).filter(SalaryEmail.field_name=='sender').first()
-                password = self.db.query(SalaryEmail).filter(SalaryEmail.field_name=='password').first()
-                sender_name = self.db.query(SalaryEmail).filter(SalaryEmail.field_name=='sender_name').first()
-                smtp_server = self.db.query(SalaryEmail).filter(SalaryEmail.field_name=='smtp_server').first()
-                port = self.db.query(SalaryEmail).filter(SalaryEmail.field_name=='port').first()
-                template = self.db.query(SalaryEmail).filter(SalaryEmail.field_name=='email_template').first()
+                sender = worker_db.query(SalaryEmail).filter(SalaryEmail.field_name=='sender').first()
+                password = worker_db.query(SalaryEmail).filter(SalaryEmail.field_name=='password').first()
+                sender_name = worker_db.query(SalaryEmail).filter(SalaryEmail.field_name=='sender_name').first()
+                smtp_server = worker_db.query(SalaryEmail).filter(SalaryEmail.field_name=='smtp_server').first()
+                port = worker_db.query(SalaryEmail).filter(SalaryEmail.field_name=='port').first()
+                template = worker_db.query(SalaryEmail).filter(SalaryEmail.field_name=='email_template').first()
                 
                 if not all([sender, password, sender_name, smtp_server, port, template]):
                     self.after(0, lambda: progress_dialog.destroy())
@@ -536,9 +605,9 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
                         employee_id = values[1]
                         
                         # 获取工资记录和员工信息
-                        record = self.db.query(SalaryRecord)\
+                        record = worker_db.query(SalaryRecord)\
                             .filter_by(employee_id=employee_id, salary_month=month).first()
-                        employee = self.db.query(Employee)\
+                        employee = worker_db.query(Employee)\
                             .filter_by(employee_id=employee_id).first()
                         
                         if not record or not employee:
@@ -560,7 +629,7 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
                         # 更新发送状态
                         record.send_status = 1
                         record.send_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                        self.db.add(record)
+                        worker_db.add(record)
                         success_count += 1
                         
                     except Exception as e:
@@ -568,7 +637,7 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
                         error_count += 1
                     
                     # 每发送一封邮件就提交一次
-                    self.db.commit()
+                    worker_db.commit()
                 
                 smtp.quit()
                 
@@ -583,9 +652,13 @@ class CTKSalaryManageWin(ctk.CTkToplevel):
                 self.after(200, lambda: CTKMessageBox.show_info(self, '发送完成', result_msg))
                 
             except Exception as e:
+                error_msg = f'发送过程出错：\n{str(e)}'
                 self.after(0, lambda: progress_dialog.destroy())
-                self.after(100, lambda: CTKMessageBox.show_error(self, '错误', f'发送过程出错：\n{str(e)}'))
-                self.db.rollback()
+                self.after(100, lambda: CTKMessageBox.show_error(self, '错误', error_msg))
+                worker_db.rollback()
+            finally:
+                # 确保关闭工作线程的数据库连接
+                worker_db.close()
         
         # 在后台线程中执行发送
         send_thread = threading.Thread(target=send_worker)

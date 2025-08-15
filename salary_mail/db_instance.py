@@ -47,6 +47,7 @@ class SalaryRecord(Base):
     actual_salary = Column(String(20))
     remark = Column(String(1024))  # 备注
     send_status = Column(Integer, default=0)  # 0:未发送 1:发送成功 2:发送失败
+    send_time = Column(String(20))  # 发送时间
 
 class SystemConfig(Base):
     """系统配置表"""

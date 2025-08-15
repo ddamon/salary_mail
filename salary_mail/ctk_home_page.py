@@ -10,8 +10,9 @@ from PIL import Image
 
 from salary_mail.db_instance import set_db
 from salary_mail.ctk_login_window import CTKLoginWindow
-from salary_mail.ctk_theme_manager import theme_manager, CTKThemeSelector
+from salary_mail.ctk_theme_manager import theme_manager as ctk_theme_manager, CTKThemeSelector
 from salary_mail.ctk_components import CTKWindowSizeManager
+from salary_mail.theme_config import theme_manager as responsive_theme_manager
 
 
 class CTKSettingsMenu(ctk.CTkToplevel):
@@ -21,104 +22,115 @@ class CTKSettingsMenu(ctk.CTkToplevel):
         super().__init__(parent)
         
         self.title('系统设置')
-        # 使用窗口大小管理器适配高分辨率
-        CTKWindowSizeManager.adjust_window_size(self, 400, 420, 350, 350)
+        
+        # 设置响应式窗口配置（但不立即居中）
+        self.responsive_config = responsive_theme_manager.get_responsive_config()
+        window_config = self.responsive_config.get('dialog_window', self.responsive_config['main_window'])
+        
+        # 设置窗口尺寸但不设置位置
+        width = window_config['width']
+        height = window_config['height']
+        self.geometry(f'{width}x{height}')
+        
+        if 'min_width' in window_config and 'min_height' in window_config:
+            self.minsize(window_config['min_width'], window_config['min_height'])
+            
         self.resizable(True, True)
         
         # 设置窗口属性
         self.transient(parent)
         self.grab_set()
         
-        # 居中显示
-        self.center_on_parent(parent)
-        
         self.parent = parent
         
         self.setup_ui()
         
+        # 延迟居中显示在父窗口中心
+        self.after(100, lambda: responsive_theme_manager.center_window_on_parent(self, parent))
+        
         # 设置焦点
         self.focus_force()
     
-    def center_on_parent(self, parent):
-        """在父窗口中心显示"""
-        self.update_idletasks()
-        
-        parent_x = parent.winfo_x()
-        parent_y = parent.winfo_y()
-        parent_width = parent.winfo_width()
-        parent_height = parent.winfo_height()
-        
-        x = parent_x + (parent_width - self.winfo_width()) // 2
-        y = parent_y + (parent_height - self.winfo_height()) // 2
-        
-        self.geometry(f"+{x}+{y}")
+
     
     def setup_ui(self):
-        """设置UI"""
+        """设置响应式UI"""
+        # 获取响应式配置
+        padding = responsive_theme_manager.get_size('padding_large')
+        title_font_size = responsive_theme_manager.get_font('title')[1]
+        section_spacing = responsive_theme_manager.get_size('margin_large')
+        
         # 主容器
         main_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
-        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        main_frame.pack(fill="both", expand=True, padx=padding, pady=padding)
         
         # 标题
         title_label = ctk.CTkLabel(
             main_frame,
             text="系统设置",
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=18, weight="bold")
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=title_font_size, weight="bold")
         )
-        title_label.pack(pady=(0, 20))
+        title_label.pack(pady=(0, section_spacing))
         
         # 设置选项
-        options_frame = ctk.CTkFrame(main_frame, corner_radius=10)
+        show_card_effects = responsive_theme_manager.get_responsive_config().get('card_effects', True)
+        corner_radius = 10 if show_card_effects else 5
+        options_frame = ctk.CTkFrame(main_frame, corner_radius=corner_radius)
         options_frame.pack(fill="both", expand=True, pady=(0, 15))
         
         # 选项内容
         options_content = ctk.CTkFrame(options_frame, fg_color="transparent")
         options_content.pack(fill="both", expand=True, padx=15, pady=15)
         
+        # 获取响应式按钮配置
+        button_height = responsive_theme_manager.get_size('button_height')
+        button_font_size = responsive_theme_manager.get_font('button')[1]
+        button_spacing = responsive_theme_manager.get_responsive_config().get('button_spacing', 8)
+        
         # 邮箱设置按钮
         email_btn = ctk.CTkButton(
             options_content,
             text="📧 邮箱设置",
             command=self.open_email_setting,
-            height=45,
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14, weight="bold"),
+            height=button_height,
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=button_font_size, weight="bold"),
             anchor="w"
         )
-        email_btn.pack(fill="x", pady=(0, 8))
+        email_btn.pack(fill="x", pady=(0, button_spacing))
         
         # 模板设置按钮
         template_btn = ctk.CTkButton(
             options_content,
             text="📄 模板设置",
             command=self.open_template_setting,
-            height=45,
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14, weight="bold"),
+            height=button_height,
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=button_font_size, weight="bold"),
             fg_color="#9C27B0",
             hover_color="#7B1FA2",
             anchor="w"
         )
-        template_btn.pack(fill="x", pady=(0, 8))
+        template_btn.pack(fill="x", pady=(0, button_spacing))
         
         # 信息管理按钮
         info_btn = ctk.CTkButton(
             options_content,
             text="🏢 信息管理",
             command=self.open_info_manage,
-            height=45,
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14, weight="bold"),
+            height=button_height,
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=button_font_size, weight="bold"),
             fg_color="#795548",
             hover_color="#5D4037",
             anchor="w"
         )
-        info_btn.pack(fill="x", pady=(0, 8))
+        info_btn.pack(fill="x", pady=(0, button_spacing))
         
         # 主题设置按钮
         theme_btn = ctk.CTkButton(
             options_content,
             text="🎨 主题设置",
             command=self.open_theme_setting,
-            height=45,
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14, weight="bold"),
+            height=button_height,
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=button_font_size, weight="bold"),
             fg_color="#E91E63",
             hover_color="#C2185B",
             anchor="w"
@@ -155,7 +167,7 @@ class CTKSettingsMenu(ctk.CTkToplevel):
     def open_theme_setting(self):
         """打开主题设置"""
         self.destroy()
-        theme_selector = CTKThemeSelector(self.parent, theme_manager)
+        theme_selector = CTKThemeSelector(self.parent, ctk_theme_manager)
         theme_selector.mainloop()
     
     def show(self):
@@ -182,6 +194,9 @@ class CTKHomePage(ctk.CTk):
         
         # 初始化延迟任务列表
         self.pending_tasks = []
+        
+        # 设置响应式窗口配置
+        self.responsive_config = responsive_theme_manager.setup_responsive_window(self, 'main_window')
         
         # 在设置UI之前立即设置全屏，避免先显示小窗口
         self.set_fullscreen_immediately()
@@ -464,10 +479,13 @@ class CTKHomePage(ctk.CTk):
             return original_image
     
     def setup_ui(self):
-        """设置用户界面"""
-        # 主容器框架 - 全屏模式下增加内边距
+        """设置响应式用户界面"""
+        # 获取响应式配置
+        container_padding = responsive_theme_manager.get_size('padding_xl')
+        
+        # 主容器框架 - 响应式内边距
         main_container = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
-        main_container.pack(fill="both", expand=True, padx=40, pady=40)
+        main_container.pack(fill="both", expand=True, padx=container_padding, pady=container_padding)
         
         # 顶部标题区域
         self.create_header(main_container)
@@ -479,28 +497,40 @@ class CTKHomePage(ctk.CTk):
         self.create_status_bar(main_container)
     
     def create_header(self, parent):
-        """创建顶部标题区域"""
-        header_frame = ctk.CTkFrame(parent, height=150, corner_radius=20)
-        header_frame.pack(fill="x", pady=(0, 40))
+        """创建响应式顶部标题区域"""
+        # 获取响应式配置
+        title_font_size = responsive_theme_manager.get_font('title')[1] +8  # 主页面标题更大
+        subtitle_font_size = responsive_theme_manager.get_font('subtitle')[1]
+        section_spacing = responsive_theme_manager.get_size('margin_xl')
+        show_subtitle = responsive_theme_manager.get_responsive_config().get('show_subtitle', True)
+        show_card_effects = responsive_theme_manager.get_responsive_config().get('card_effects', True)
+        
+        # 动态调整header高度
+        header_height = 120 if show_subtitle else 80
+        corner_radius = 20 if show_card_effects else 10
+        
+        header_frame = ctk.CTkFrame(parent, height=header_height, corner_radius=corner_radius)
+        header_frame.pack(fill="x", pady=(0, section_spacing))
         header_frame.pack_propagate(False)
         
         # 标题
         title_label = ctk.CTkLabel(
             header_frame,
             text="工资条管理系统",
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=42, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=title_font_size, weight="bold"),
             text_color=("#1976d2", "#64b5f6")  # 浅色模式和深色模式的颜色
         )
-        title_label.pack(pady=(25, 8))
+        title_label.pack(pady=(20, 8))
         
-        # 副标题
-        subtitle_label = ctk.CTkLabel(
-            header_frame,
-            text="现代化的工资条发送管理工具",
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=18),
-            text_color=("#666666", "#aaaaaa")
-        )
-        subtitle_label.pack(pady=(0, 25))
+        # 副标题（根据屏幕尺寸决定是否显示）
+        if show_subtitle:
+            subtitle_label = ctk.CTkLabel(
+                header_frame,
+                text="现代化的工资条发送管理工具",
+                font=ctk.CTkFont(family="Microsoft YaHei UI", size=subtitle_font_size),
+                text_color=("#666666", "#aaaaaa")
+            )
+            subtitle_label.pack(pady=(0, 20))
     
     def create_cards_section(self, parent):
         """创建功能卡片区域"""

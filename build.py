@@ -36,36 +36,22 @@ def build():
             print(f"错误：找不到目录 {dist_dir}")
             return
             
-        # 查找实际的可执行文件
-        exe_file = None
-        for file in glob.glob(os.path.join(dist_dir, '*.exe')):
-            exe_file = file
-            break
-            
-        if not exe_file:
-            print("错误：在dist目录中找不到可执行文件")
+        # 查找打包生成的目录
+        app_dir = os.path.join(dist_dir, 'SalaryEmailSystem')
+        if not os.path.exists(app_dir):
+            print("错误：找不到打包生成的应用目录")
             return
             
         target_dir = os.path.join(release_dir, '工资条管理系统')
-        os.makedirs(target_dir)
         
-        # 复制所有文件到目标目录
-        for item in os.listdir(dist_dir):
-            s = os.path.join(dist_dir, item)
-            d = os.path.join(target_dir, item)
-            if os.path.isfile(s):
-                shutil.copy2(s, d)
-            else:
-                shutil.copytree(s, d)
+        # 直接复制整个应用目录
+        shutil.copytree(app_dir, target_dir)
         
         # 重命名主程序
+        old_exe_name = os.path.join(target_dir, 'SalaryEmailSystem.exe')
         new_exe_name = os.path.join(target_dir, '工资条管理系统.exe')
-        if os.path.exists(new_exe_name):
-            os.remove(new_exe_name)
-        os.rename(
-            os.path.join(target_dir, os.path.basename(exe_file)),
-            new_exe_name
-        )
+        if os.path.exists(old_exe_name):
+            os.rename(old_exe_name, new_exe_name)
         
         # 复制说明文档
         with open(os.path.join(release_dir, '说明.txt'), 'w', encoding='utf-8') as f:

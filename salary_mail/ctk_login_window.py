@@ -7,6 +7,7 @@ from datetime import datetime
 from salary_mail.db_instance import User
 import os
 from PIL import Image
+from .theme_config import theme_manager as responsive_theme_manager
 
 class CTKLoginWindow(ctk.CTk):
     def __init__(self, db):
@@ -17,16 +18,25 @@ class CTKLoginWindow(ctk.CTk):
         # 初始化延迟任务列表，用于窗口关闭时取消
         self.pending_tasks = []
 
-        # 设置窗口样式
-        self.geometry("420x480")
-        self.minsize(380, 420)
-        self.resizable(True, True)
+        # 获取响应式窗口配置但不自动居中
+        self.responsive_config = responsive_theme_manager.get_responsive_config()
+        window_config = self.responsive_config.get('login_window', self.responsive_config['main_window'])
 
-        # 居中显示
-        self.center_window()
+        # 设置窗口尺寸但不设置位置
+        width = window_config['width']
+        height = window_config['height']
+        self.geometry(f'{width}x{height}')
+
+        if 'min_width' in window_config and 'min_height' in window_config:
+            self.minsize(window_config['min_width'], window_config['min_height'])
+
+        self.resizable(True, True)
 
         # 设置UI
         self.setup_ui()
+
+        # UI加载完成后再居中显示
+        self.schedule_task(200, self.ensure_centered)
 
         # 设置焦点
         self.schedule_task(100, self.safe_focus_username)
@@ -65,20 +75,51 @@ class CTKLoginWindow(ctk.CTk):
         except:
             pass
 
-    def center_window(self):
-        """窗口居中显示"""
-        self.update_idletasks()
-        width = self.winfo_width()
-        height = self.winfo_height()
-        x = (self.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.winfo_screenheight() // 2) - (height // 2)
-        self.geometry(f"{width}x{height}+{x}+{y}")
+    def ensure_centered(self):
+        """确保窗口在屏幕中心显示"""
+        try:
+            if self.winfo_exists():
+                # 强制更新窗口信息，确保获取准确的尺寸
+                self.update_idletasks()
+
+                # 获取当前窗口尺寸
+                current_width = self.winfo_width()
+                current_height = self.winfo_height()
+
+                # 使用主题管理器的居中方法
+                responsive_theme_manager.center_window_on_screen(self)
+
+                # 验证居中效果
+                self.update_idletasks()
+                final_x = self.winfo_x()
+                final_y = self.winfo_y()
+
+                # 如果您觉得位置不对，可以手动微调
+                if final_x < 100 or final_y < 100:
+                    # 手动计算居中位置
+                    screen_w = self.winfo_screenwidth()
+                    screen_h = self.winfo_screenheight()
+
+                    # 您可以调整这些值来微调位置
+                    manual_x = (screen_w - current_width) // 2
+                    manual_y = (screen_h - current_height) // 2 - 50  # 向上调整50像素
+
+                    self.geometry(f"+{manual_x}+{manual_y}")
+                    self.update()
+
+        except Exception as e:
+            print(f"登录窗口居中失败: {e}")
+
+
 
     def setup_ui(self):
-        """设置用户界面"""
+        """设置响应式用户界面"""
+        # 获取响应式配置
+        padding = responsive_theme_manager.get_size('padding_large')
+
         # 主容器
         main_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
-        main_frame.pack(fill="both", expand=True, padx=30, pady=30)
+        main_frame.pack(fill="both", expand=True, padx=padding, pady=padding)
 
         # 标题区域
         self.create_header(main_frame)
@@ -93,43 +134,62 @@ class CTKLoginWindow(ctk.CTk):
         self.check_first_time_use()
 
     def create_header(self, parent):
-        """创建标题区域"""
+        """创建响应式标题区域"""
+        # 获取响应式配置
+        section_spacing = responsive_theme_manager.get_size('margin_xl')
+        title_font_size = responsive_theme_manager.get_font('title')[1]
+        subtitle_font_size = responsive_theme_manager.get_font('subtitle')[1]
+        show_subtitle = responsive_theme_manager.get_responsive_config().get('show_subtitle', True)
+
         header_frame = ctk.CTkFrame(parent, fg_color="transparent")
-        header_frame.pack(fill="x", pady=(0, 40))
+        header_frame.pack(fill="x", pady=(0, section_spacing))
 
         # 主标题
         title_label = ctk.CTkLabel(
             header_frame,
             text="工资条管理系统",
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=28, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=title_font_size, weight="bold"),
             text_color=("#1976d2", "#64b5f6")
         )
         title_label.pack(pady=(0, 10))
 
-        # 副标题
-        subtitle_label = ctk.CTkLabel(
-            header_frame,
-            text="请登录以继续使用",
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14),
-            text_color=("#666666", "#aaaaaa")
-        )
-        subtitle_label.pack()
+        # 副标题（根据屏幕尺寸决定是否显示）
+        if show_subtitle:
+            subtitle_label = ctk.CTkLabel(
+                header_frame,
+                text="请登录以继续使用",
+                font=ctk.CTkFont(family="Microsoft YaHei UI", size=subtitle_font_size),
+                text_color=("#666666", "#aaaaaa")
+            )
+            subtitle_label.pack()
 
     def create_login_form(self, parent):
-        """创建登录表单"""
+        """创建响应式登录表单"""
+        # 获取响应式配置
+        form_padding = responsive_theme_manager.get_size('padding_large')
+        section_spacing = responsive_theme_manager.get_size('margin_large')
+        show_card_effects = responsive_theme_manager.get_responsive_config().get('card_effects', True)
+
         # 表单容器
-        form_frame = ctk.CTkFrame(parent, corner_radius=15)
-        form_frame.pack(fill="x", pady=(0, 30))
+        corner_radius = 15 if show_card_effects else 8
+        form_frame = ctk.CTkFrame(parent, corner_radius=corner_radius)
+        form_frame.pack(fill="x", pady=(0, section_spacing))
 
         # 表单内容
         form_content = ctk.CTkFrame(form_frame, fg_color="transparent")
-        form_content.pack(fill="both", expand=True, padx=30, pady=30)
+        form_content.pack(fill="both", expand=True, padx=form_padding, pady=form_padding)
+
+        # 获取响应式字体和尺寸配置
+        label_font_size = responsive_theme_manager.get_font('heading')[1]
+        input_font_size = responsive_theme_manager.get_font('input')[1]
+        input_height = responsive_theme_manager.get_size('input_height')
+        input_spacing = responsive_theme_manager.get_responsive_config().get('input_spacing', 15)
 
         # 用户名输入
         username_label = ctk.CTkLabel(
             form_content,
             text="用户名",
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=label_font_size, weight="bold"),
             anchor="w"
         )
         username_label.pack(fill="x", pady=(0, 5))
@@ -137,17 +197,17 @@ class CTKLoginWindow(ctk.CTk):
         self.username_entry = ctk.CTkEntry(
             form_content,
             placeholder_text="请输入用户名",
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14),
-            height=40,
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=input_font_size),
+            height=input_height,
             corner_radius=10
         )
-        self.username_entry.pack(fill="x", pady=(0, 20))
+        self.username_entry.pack(fill="x", pady=(0, input_spacing))
 
         # 密码输入
         password_label = ctk.CTkLabel(
             form_content,
             text="密码",
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14, weight="bold"),
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=label_font_size, weight="bold"),
             anchor="w"
         )
         password_label.pack(fill="x", pady=(0, 5))
@@ -156,19 +216,22 @@ class CTKLoginWindow(ctk.CTk):
             form_content,
             placeholder_text="请输入密码",
             show="●",
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=14),
-            height=40,
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=input_font_size),
+            height=input_height,
             corner_radius=10
         )
-        self.password_entry.pack(fill="x", pady=(0, 30))
+        self.password_entry.pack(fill="x", pady=(0, input_spacing * 2))
 
         # 登录按钮
+        button_font_size = responsive_theme_manager.get_font('button')[1]
+        button_height = responsive_theme_manager.get_size('button_height')
+
         self.login_btn = ctk.CTkButton(
             form_content,
             text="登 录",
             command=self.login,
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=16, weight="bold"),
-            height=45,
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=button_font_size, weight="bold"),
+            height=button_height,
             corner_radius=10,
             fg_color=("#1976d2", "#1976d2"),
             hover_color=("#1565c0", "#1565c0")
@@ -202,18 +265,23 @@ class CTKLoginWindow(ctk.CTk):
             pass
 
     def create_footer(self, parent):
-        """创建底部信息"""
-        footer_frame = ctk.CTkFrame(parent, fg_color="transparent")
-        footer_frame.pack(fill="x")
+        """创建响应式底部信息"""
+        # 根据屏幕尺寸决定是否显示页脚
+        show_footer = responsive_theme_manager.get_responsive_config().get('show_footer', True)
 
-        # 版权信息
-        copyright_label = ctk.CTkLabel(
-            footer_frame,
-            text="© 2025 工资条管理系统",
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=12),
-            text_color=("#999999", "#666666")
-        )
-        copyright_label.pack()
+        if show_footer:
+            footer_frame = ctk.CTkFrame(parent, fg_color="transparent")
+            footer_frame.pack(fill="x")
+
+            # 版权信息
+            footer_font_size = responsive_theme_manager.get_responsive_config().get('footer_font', 12)
+            copyright_label = ctk.CTkLabel(
+                footer_frame,
+                text="© 2025 工资条管理系统",
+                font=ctk.CTkFont(family="Microsoft YaHei UI", size=footer_font_size),
+                text_color=("#999999", "#666666")
+            )
+            copyright_label.pack()
 
     def check_first_time_use(self):
         """检查首次使用"""

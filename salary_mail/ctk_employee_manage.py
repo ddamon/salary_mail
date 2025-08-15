@@ -9,6 +9,7 @@ import openpyxl
 import re
 from salary_mail.db_instance import Employee
 from salary_mail.ctk_components import CTKTreeview, CTKMessageBox, CTKFileDialog, CTKSearchEntry, CTKWindowSizeManager
+from salary_mail.theme_config import theme_manager as responsive_theme_manager
 
 class CTKEmployeeDialog(ctk.CTkToplevel):
     """员工信息编辑对话框"""
@@ -18,59 +19,60 @@ class CTKEmployeeDialog(ctk.CTkToplevel):
 
         self.title('编辑员工' if employee else '添加员工')
         
-        # 根据屏幕DPI自动调整窗口大小
-        CTKWindowSizeManager.adjust_window_size(self, 600, 650, 550, 700)
+        # 设置响应式窗口配置（但不立即居中）
+        self.responsive_config = responsive_theme_manager.get_responsive_config()
+        window_config = self.responsive_config.get('dialog_window', self.responsive_config['main_window'])
+        
+        # 设置窗口尺寸但不设置位置
+        width = window_config['width']
+        height = window_config['height']
+        self.geometry(f'{width}x{height}')
+        
+        if 'min_width' in window_config and 'min_height' in window_config:
+            self.minsize(window_config['min_width'], window_config['min_height'])
+        
         self.resizable(True, True)
 
         # 设置为模态窗口
         self.transient(parent)
         self.grab_set()
 
-        # 居中显示
-        self.center_on_parent(parent)
-
         self.parent = parent
         self.db = parent.db
         self.employee = employee
 
         self.setup_ui()
+        
+        # 延迟居中显示在父窗口中心
+        self.after(100, lambda: responsive_theme_manager.center_window_on_parent(self, parent))
 
 
-
-    def center_on_parent(self, parent):
-        """在父窗口中心显示"""
-        self.update_idletasks()
-
-        parent_x = parent.winfo_x()
-        parent_y = parent.winfo_y()
-        parent_width = parent.winfo_width()
-        parent_height = parent.winfo_height()
-
-        x = parent_x + (parent_width - self.winfo_width()) // 2
-        y = parent_y + (parent_height - self.winfo_height()) // 2
-
-        self.geometry(f"+{x}+{y}")
 
     def setup_ui(self):
-        """设置UI"""
+        """设置响应式UI"""
+        # 获取响应式配置
+        padding = responsive_theme_manager.get_size('padding_large')
+        title_font_size = responsive_theme_manager.get_font('title')[1]
+        section_spacing = responsive_theme_manager.get_size('margin_large')
+        
         # 主容器
         main_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
-        main_frame.pack(fill="both", expand=True, padx=25, pady=25)
+        main_frame.pack(fill="both", expand=True, padx=padding, pady=padding)
 
         # 标题
         title_label = ctk.CTkLabel(
             main_frame,
             text="编辑员工信息" if self.employee else "添加员工信息",
-            font=ctk.CTkFont(family="Microsoft YaHei UI", size=20, weight="bold")
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=title_font_size, weight="bold")
         )
-        title_label.pack(pady=(0, 25))
+        title_label.pack(pady=(0, section_spacing))
 
         # 表单区域 - 使用滚动容器
         form_frame = ctk.CTkFrame(main_frame, corner_radius=15)
         form_frame.pack(fill="both", expand=True, pady=(0, 25))
 
         # 创建滚动框架 - 适配高分辨率缩放
-        scroll_width, scroll_height = CTKWindowSizeManager.get_scroll_frame_size(520, 450)
+        scroll_width, scroll_height = CTKWindowSizeManager.get_scroll_frame_size(520, 550)
             
         self.scroll_frame = ctk.CTkScrollableFrame(
             form_frame,
@@ -318,19 +320,7 @@ class CTKEmployeeManageWin(ctk.CTkToplevel):
             # 备用方案：使用窗口大小管理器
             CTKWindowSizeManager.adjust_window_size(self, 1200, 750, 1000, 650, (0.9, 0.8))
 
-    def center_on_parent(self, parent):
-        """在父窗口中心显示"""
-        self.update_idletasks()
 
-        parent_x = parent.winfo_x()
-        parent_y = parent.winfo_y()
-        parent_width = parent.winfo_width()
-        parent_height = parent.winfo_height()
-
-        x = parent_x + (parent_width - self.winfo_width()) // 2
-        y = parent_y + (parent_height - self.winfo_height()) // 2
-
-        self.geometry(f"+{x}+{y}")
 
     def setup_ui(self):
         """设置UI"""
@@ -390,7 +380,7 @@ class CTKEmployeeManageWin(ctk.CTkToplevel):
             left_buttons,
             text="✏️ 修改",
             command=self.edit_employee,
-            width=80,
+            width=120,
             height=40,
             font=ctk.CTkFont(family="Microsoft YaHei UI", size=12, weight="bold"),
             fg_color="#FF9800",
@@ -404,7 +394,7 @@ class CTKEmployeeManageWin(ctk.CTkToplevel):
             left_buttons,
             text="🗑️ 删除",
             command=self.delete_employee,
-            width=80,
+            width=120,
             height=40,
             font=ctk.CTkFont(family="Microsoft YaHei UI", size=14, weight="bold"),
             fg_color="#F44336",
@@ -446,11 +436,17 @@ class CTKEmployeeManageWin(ctk.CTkToplevel):
 
     def create_employee_list(self, parent):
         """创建员工列表"""
-        # 列表容器 - 深色模式下使用深色背景
-        list_frame = ctk.CTkFrame(parent, corner_radius=10)
+        # 获取当前主题模式
+        appearance_mode = ctk.get_appearance_mode()
+        
+        # 列表容器 - 根据主题设置背景色
+        if appearance_mode == "Dark":
+            list_frame = ctk.CTkFrame(parent, corner_radius=10, fg_color="#212121")
+        else:
+            list_frame = ctk.CTkFrame(parent, corner_radius=10, fg_color="#F8F9FA")
         list_frame.pack(fill="both", expand=True)
 
-        # 列表内容 - 深色模式下使用深色背景
+        # 列表内容 - 使用透明背景让容器背景透出
         list_content = ctk.CTkFrame(list_frame, fg_color="transparent")
         list_content.pack(fill="both", expand=True, padx=15, pady=15)
 
@@ -460,9 +456,89 @@ class CTKEmployeeManageWin(ctk.CTkToplevel):
             corner_radius=5
         )
         self.employee_tree.pack(fill="both", expand=True)
+        
+        # 保存容器引用以便主题切换时更新
+        self.list_frame = list_frame
+        
+        # 配置状态颜色标签
+        self.setup_status_colors()
+        
+        # 启动主题监听
+        self._theme_monitor_active = True
+        self.monitor_theme_changes()
 
         # 使用与工资管理页面相同的简单选择事件
         self.employee_tree.bind('<<TreeviewSelect>>', self.on_select)
+        
+        # 绑定双击事件用于编辑
+        self.employee_tree.bind('<Double-1>', self.on_double_click)
+    
+    def monitor_theme_changes(self):
+        """监听主题变化并更新容器背景色"""
+        try:
+            # 检查窗口是否仍然存在
+            if not self.winfo_exists():
+                return
+                
+            current_mode = ctk.get_appearance_mode()
+            if not hasattr(self, '_last_theme_mode'):
+                self._last_theme_mode = current_mode
+            elif self._last_theme_mode != current_mode:
+                self._last_theme_mode = current_mode
+                self.update_container_colors()
+                self.setup_status_colors()  # 重新设置状态颜色
+            
+            # 每500ms检查一次
+            if hasattr(self, '_theme_monitor_active') and self._theme_monitor_active:
+                self.after(500, self.monitor_theme_changes)
+        except:
+            # 如果出现错误，停止监听
+            pass
+    
+    def update_container_colors(self):
+        """更新容器背景色"""
+        appearance_mode = ctk.get_appearance_mode()
+        if hasattr(self, 'list_frame'):
+            if appearance_mode == "Dark":
+                self.list_frame.configure(fg_color="#212121")
+            else:
+                self.list_frame.configure(fg_color="#F8F9FA")
+    
+    def stop_theme_monitoring(self):
+        """停止主题监听"""
+        self._theme_monitor_active = False
+    
+    def destroy(self):
+        """重写destroy方法，确保停止主题监听"""
+        if hasattr(self, '_theme_monitor_active'):
+            self.stop_theme_monitoring()
+        super().destroy()
+
+    def setup_status_colors(self):
+        """配置员工状态颜色"""
+        # 获取当前主题模式
+        appearance_mode = ctk.get_appearance_mode()
+        
+        if appearance_mode == "Dark":
+            # 深色主题下的颜色
+            active_color = "#4CAF50"    # 绿色 - 在职
+            inactive_color = "#F44336"  # 红色 - 离职
+            active_bg = "#1B4D1B"       # 深绿背景
+            inactive_bg = "#4D1B1B"     # 深红背景
+        else:
+            # 浅色主题下的颜色
+            active_color = "#2E7D32"    # 深绿色 - 在职
+            inactive_color = "#C62828"  # 深红色 - 离职
+            active_bg = "#E8F5E8"       # 浅绿背景
+            inactive_bg = "#FFEBEE"     # 浅红背景
+        
+        # 配置状态标签颜色
+        self.employee_tree.tree.tag_configure('active', 
+                                             foreground=active_color,
+                                             background=active_bg)
+        self.employee_tree.tree.tag_configure('inactive', 
+                                            foreground=inactive_color,
+                                            background=inactive_bg)
 
     def load_employees(self):
         """加载员工数据"""
@@ -473,16 +549,23 @@ class CTKEmployeeManageWin(ctk.CTkToplevel):
         # 从数据库加载数据
         employees = self.db.query(Employee).all()
         for idx, emp in enumerate(employees, 1):
-            status = "🟢 在职" if emp.status == 1 else "🔴 离职"
+            # 使用更清晰的状态图标和文本
+            if emp.status == 1:
+                status = "✓ 在职"  # 绿色对勾，表示在职
+                tag = 'active'
+            else:
+                status = "✗ 离职"  # 红色叉号，表示离职
+                tag = 'inactive'
 
-            self.employee_tree.insert('', 'end', values=(
+            # 插入数据并设置标签
+            item = self.employee_tree.insert('', 'end', values=(
                 str(idx),
                 emp.employee_id,
                 emp.name,
                 emp.email,
                 emp.phone or '',
                 status
-            ))
+            ), tags=(tag,))
 
         # 重置搜索
         self.search_entry.clear()
@@ -510,16 +593,23 @@ class CTKEmployeeManageWin(ctk.CTkToplevel):
 
         # 显示搜索结果
         for idx, emp in enumerate(employees, 1):
-            status = "🟢 在职" if emp.status == 1 else "🔴 离职"
+            # 使用与加载数据相同的状态显示格式
+            if emp.status == 1:
+                status = "✓ 在职"  # 绿色对勾，表示在职
+                tag = 'active'
+            else:
+                status = "✗ 离职"  # 红色叉号，表示离职
+                tag = 'inactive'
 
-            self.employee_tree.insert('', 'end', values=(
+            # 插入数据并设置标签
+            item = self.employee_tree.insert('', 'end', values=(
                 str(idx),
                 emp.employee_id,
                 emp.name,
                 emp.email,
                 emp.phone or '',
                 status
-            ))
+            ), tags=(tag,))
 
         # 更新搜索结果计数
         total_count = self.db.query(Employee).count()
@@ -586,6 +676,30 @@ class CTKEmployeeManageWin(ctk.CTkToplevel):
         if selection:
             # 可以在这里添加选中行的相关操作
             pass
+    
+    def on_double_click(self, event):
+        """处理双击事件，直接编辑员工"""
+        selection = self.employee_tree.selection()
+        if not selection:
+            return
+        
+        try:
+            # 获取选中的员工数据
+            item = self.employee_tree.item(selection[0])
+            employee_id = item['values'][1]  # employee_id在索引1位置（序号后面）
+            
+            # 查找员工记录
+            employee = self.db.query(Employee).filter_by(employee_id=employee_id).first()
+            if employee:
+                # 打开编辑对话框
+                dialog = CTKEmployeeDialog(self, employee)
+                self.wait_window(dialog)
+                # 重新加载员工列表
+                self.load_employees()
+            else:
+                CTKMessageBox.show_warning(self, '警告', '未找到该员工！')
+        except Exception as e:
+            CTKMessageBox.show_error(self, '错误', f'编辑员工失败：\n{str(e)}')
     
 
 

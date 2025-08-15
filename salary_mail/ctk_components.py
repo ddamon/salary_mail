@@ -13,6 +13,13 @@ class CTKTreeview(ctk.CTkFrame):
     """CustomTkinter风格的表格组件（基于ttk.Treeview）"""
 
     def __init__(self, parent, columns, show_checkboxes=False, **kwargs):
+        # 设置深色模式下的背景色
+        appearance_mode = ctk.get_appearance_mode()
+        if appearance_mode == "Dark":
+            kwargs.setdefault('fg_color', "#1A1A1A")  # 深色背景
+        else:
+            kwargs.setdefault('fg_color', "#FFFFFF")  # 浅色背景
+            
         super().__init__(parent, **kwargs)
 
         self.columns = columns
@@ -72,6 +79,7 @@ class CTKTreeview(ctk.CTkFrame):
 
         # 获取当前主题模式
         appearance_mode = ctk.get_appearance_mode()
+        print(appearance_mode)
 
         if appearance_mode == "Dark":
             # 深色主题 - 优化对比度，更专业的配色
@@ -83,8 +91,8 @@ class CTKTreeview(ctk.CTkFrame):
             border_color = "#3C3C3C"      # 边框颜色，柔和的灰色
             alternate_bg = "#202020"      # 交替行背景色
             hover_bg = "#2A2A2A"          # 悬停背景色
-            heading_bg = "#2D2D2D"        # 表头背景色，比字段背景稍亮
-            heading_fg = "#FFFFFF"        # 表头文字色，纯白色确保清晰
+            heading_bg = "#1E1E1E"        # 表头背景色，更深的黑色
+            heading_fg = "#1A1A1A"        # 表头文字色，纯白色确保清晰
         else:
             # 浅色主题
             bg_color = "#FFFFFF"
@@ -93,9 +101,16 @@ class CTKTreeview(ctk.CTkFrame):
             select_fg = "#FFFFFF"
             field_bg = "#F0F0F0"
             border_color = "#CCCCCC"
+            alternate_bg = "#F8F8F8"      # 交替行背景色
+            hover_bg = "#F5F5F5"          # 悬停背景色
+            heading_bg = "#E0E0E0"        # 表头背景色
+            heading_fg = "#000000"        # 表头文字色
 
-        # 配置Treeview样式
-        style.configure("CTK.Treeview",
+        # 配置Treeview样式 - 使用固定的样式名称
+        style_name = "CTKCustom.Treeview"
+        heading_style_name = "CTKCustom.Treeview.Heading"
+        
+        style.configure(style_name,
                        rowheight=42,
                        background=bg_color,
                        fieldbackground=field_bg,
@@ -104,42 +119,43 @@ class CTKTreeview(ctk.CTkFrame):
                        relief="solid",
                        font=('Microsoft YaHei UI', 14))
 
-        style.configure("CTK.Treeview.Heading",
+        style.configure(heading_style_name,
                        padding=[10, 5, 10, 5],
                        font=('Microsoft YaHei UI', 16, 'bold'),
-                       background=heading_bg if appearance_mode == "Dark" else field_bg,
-                       foreground=heading_fg if appearance_mode == "Dark" else fg_color,
+                       background=heading_bg,
                        borderwidth=1,
                        relief="flat")
 
-        style.map("CTK.Treeview",
+        style.map(style_name,
                  background=[('selected', select_bg)],
                  foreground=[('selected', select_fg)])
 
         # 深色模式下添加交替行颜色和悬停效果
         if appearance_mode == "Dark":
-            style.map("CTK.Treeview",
+            style.map(style_name,
                      background=[('selected', select_bg),
                                 ('alternate', alternate_bg),
                                 ('hover', hover_bg)],
                      foreground=[('selected', select_fg)])
         else:
             # 浅色模式下的悬停效果
-            style.map("CTK.Treeview",
+            style.map(style_name,
                      background=[('selected', select_bg),
-                                ('hover', "#F5F5F5")],
+                                ('hover', hover_bg)],
                      foreground=[('selected', select_fg)])
 
         # 表头悬停效果
-        if appearance_mode == "Dark":
-            style.map("CTK.Treeview.Heading",
-                     background=[('active', "#404040")])  # 深色模式下的悬停色
-        else:
-            style.map("CTK.Treeview.Heading",
-                     background=[('active', border_color)])  # 浅色模式下的悬停色
+        # if appearance_mode == "Dark":
+        #     style.map(heading_style_name,
+        #              background=[('active', "#404040")],  # 深色模式下的悬停色
+        #              foreground=[('active', "#FFFFFF")])   # 确保悬停时文字仍然是白色
+        # else:
+        #     style.map(heading_style_name,
+        #              background=[('active', "#D0D0D0")],   # 浅色模式下的悬停色
+        #              foreground=[('active', "#000000")])   # 确保悬停时文字仍然是黑色
 
         # 应用样式
-        self.tree.configure(style="CTK.Treeview")
+        self.tree.configure(style=style_name)
 
         # 绑定主题变化事件
         self.bind_theme_change()
@@ -152,6 +168,8 @@ class CTKTreeview(ctk.CTkFrame):
 
         # 监听主题变化
         try:
+            # 设置主题检查活动标志
+            self._theme_check_active = True
             # 使用after方法定期检查主题是否变化
             self.check_theme_change()
         except:
@@ -159,15 +177,44 @@ class CTKTreeview(ctk.CTkFrame):
 
     def check_theme_change(self):
         """检查主题变化"""
-        current_mode = ctk.get_appearance_mode()
-        if not hasattr(self, '_last_appearance_mode'):
-            self._last_appearance_mode = current_mode
-        elif self._last_appearance_mode != current_mode:
-            self._last_appearance_mode = current_mode
-            self.apply_ctk_style()
+        try:
+            # 检查组件是否仍然存在
+            if not self.winfo_exists():
+                return
+                
+            current_mode = ctk.get_appearance_mode()
+            if not hasattr(self, '_last_appearance_mode'):
+                self._last_appearance_mode = current_mode
+            elif self._last_appearance_mode != current_mode:
+                self._last_appearance_mode = current_mode
+                # 更新容器背景色
+                self.update_container_colors()
+                # 重新应用样式
+                self.apply_ctk_style()
 
-        # 每500ms检查一次主题变化
-        self.after(500, self.check_theme_change)
+            # 每500ms检查一次主题变化
+            if hasattr(self, '_theme_check_active') and self._theme_check_active:
+                self.after(500, self.check_theme_change)
+        except:
+            # 如果出现任何错误，停止主题检查
+            pass
+    
+    def update_container_colors(self):
+        """更新容器背景色"""
+        appearance_mode = ctk.get_appearance_mode()
+        if appearance_mode == "Dark":
+            self.configure(fg_color="#1A1A1A")
+        else:
+            self.configure(fg_color="#FFFFFF")
+    
+    def stop_theme_monitoring(self):
+        """停止主题监听"""
+        self._theme_check_active = False
+    
+    def destroy(self):
+        """重写destroy方法，确保停止主题监听"""
+        self.stop_theme_monitoring()
+        super().destroy()
 
     def insert(self, parent, index, **kwargs):
         """插入数据"""
