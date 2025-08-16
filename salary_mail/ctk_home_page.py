@@ -101,7 +101,7 @@ class CTKSettingsMenu(ctk.CTkToplevel):
         # 模板设置按钮
         template_btn = ctk.CTkButton(
             options_content,
-            text="📄 模板设置",
+            text="📄 邮件模板设置",
             command=self.open_template_setting,
             height=button_height,
             font=ctk.CTkFont(family="Microsoft YaHei UI", size=button_font_size, weight="bold"),
@@ -110,6 +110,19 @@ class CTKSettingsMenu(ctk.CTkToplevel):
             anchor="w"
         )
         template_btn.pack(fill="x", pady=(0, button_spacing))
+        
+        # 工资项配置按钮
+        salary_config_btn = ctk.CTkButton(
+            options_content,
+            text="⚙️ 工资项配置",
+            command=self.open_salary_config,
+            height=button_height,
+            font=ctk.CTkFont(family="Microsoft YaHei UI", size=button_font_size, weight="bold"),
+            fg_color="#FF9800",
+            hover_color="#F57C00",
+            anchor="w"
+        )
+        salary_config_btn.pack(fill="x", pady=(0, button_spacing))
         
         # 信息管理按钮
         info_btn = ctk.CTkButton(
@@ -158,6 +171,11 @@ class CTKSettingsMenu(ctk.CTkToplevel):
         """打开模板设置"""
         self.destroy()
         self.parent.show_template_setting()
+    
+    def open_salary_config(self):
+        """打开工资项配置"""
+        self.destroy()
+        self.parent.show_salary_config()
     
     def open_info_manage(self):
         """打开信息管理"""
@@ -437,13 +455,9 @@ class CTKHomePage(ctk.CTk):
                     image = image.resize((32, 32), Image.Resampling.LANCZOS)
                     
                     # 为深色模式创建适配的图标
-                    if name == 'employee':
-                        # 员工管理图标保持原样（已经是灰色）
-                        self.icons[name] = ctk.CTkImage(light_image=image, dark_image=image, size=(32, 32))
-                    else:
-                        # 其他图标为深色模式创建白色版本
-                        dark_image = self.create_dark_mode_icon(image)
-                        self.icons[name] = ctk.CTkImage(light_image=image, dark_image=dark_image, size=(32, 32))
+                    # 其他图标为深色模式创建白色版本
+                    dark_image = self.create_dark_mode_icon(image)
+                    self.icons[name] = ctk.CTkImage(light_image=image, dark_image=dark_image, size=(32, 32))
                 else:
                     self.icons[name] = None
             except Exception as e:
@@ -495,6 +509,106 @@ class CTKHomePage(ctk.CTk):
         
         # 底部状态栏
         self.create_status_bar(main_container)
+        
+        # 延迟检查工资项配置
+        self.schedule_task(500, self.check_salary_config)
+    
+    def check_salary_config(self):
+        """检查工资项配置，如果为空则提示用户"""
+        try:
+            from salary_mail.db_instance import SalaryFieldConfig
+            field_count = self.db.query(SalaryFieldConfig).count()
+            
+            if field_count == 0:
+                # 延迟显示提示，确保界面完全加载
+                self.schedule_task(1000, self.show_salary_config_reminder)
+                
+        except Exception as e:
+            print(f"检查工资项配置失败: {e}")
+    
+    def show_salary_config_reminder(self):
+        """显示工资项配置提醒对话框"""
+        try:
+            from salary_mail.ctk_components import CTKMessageBox
+            
+            result = CTKMessageBox.ask_yes_no(
+                self,
+                '首次使用提醒',
+                '检测到您首次使用系统，需要先配置工资项模板。\n\n'
+                '工资项配置将决定工资管理模块的显示内容。\n\n'
+                '是否现在前往配置？'
+            )
+            
+            if result == "是":
+                # 打开工资项配置窗口
+                from salary_mail.ctk_salary_config import CTKSalaryConfigWin
+                config_window = CTKSalaryConfigWin(self)
+                config_window.wait_window()
+                
+                # 配置完成后可以显示成功提示
+                CTKMessageBox.show_info(
+                    self,
+                    '配置完成',
+                    '工资项配置已完成！\n\n现在可以使用工资管理功能了。'
+                )
+                
+                # 刷新界面，重新创建工资管理卡片
+                self.refresh_salary_card()
+                
+        except Exception as e:
+                            print(f"显示工资项配置提醒失败: {e}")
+    
+    def refresh_salary_card(self):
+        """刷新工资管理卡片状态"""
+        try:
+            # 获取主容器
+            main_container = None
+            for child in self.winfo_children():
+                if isinstance(child, ctk.CTkFrame) and child.winfo_children():
+                    for subchild in child.winfo_children():
+                        if isinstance(subchild, ctk.CTkFrame) and len(subchild.winfo_children()) >= 4:
+                            main_container = subchild
+                            break
+                    if main_container:
+                        break
+            
+            if main_container:
+                # 找到工资管理卡片位置并重新创建
+                for i, child in enumerate(main_container.winfo_children()):
+                    if i == 1:  # 工资管理卡片位置
+                        child.destroy()
+                        
+                        # 检查工资项配置状态
+                        try:
+                            from salary_mail.db_instance import SalaryFieldConfig
+                            field_count = self.db.query(SalaryFieldConfig).count()
+                            salary_enabled = field_count > 0
+                        except:
+                            salary_enabled = False
+                        
+                        # 重新创建工资管理卡片
+                        if salary_enabled:
+                            self.create_feature_card(
+                                main_container, 0, 1,
+                                "工资管理",
+                                "导入工资数据并发送工资条\n支持批量发送和状态跟踪",
+                                self.icons.get('salary'),
+                                self.show_salary_manage,
+                                "#2196F3"
+                            )
+                        else:
+                            self.create_feature_card(
+                                main_container, 0, 1,
+                                "工资管理",
+                                "需要先配置工资项模板\n点击前往配置",
+                                self.icons.get('salary'),
+                                self.show_salary_config_reminder,
+                                "#999999"  # 灰色
+                            )
+                        break
+                        
+        except Exception as e:
+            print(f"刷新工资管理卡片失败: {e}")
     
     def create_header(self, parent):
         """创建响应式顶部标题区域"""
@@ -551,15 +665,35 @@ class CTKHomePage(ctk.CTk):
             "#4CAF50"
         )
         
+        # 检查工资项配置状态
+        try:
+            from salary_mail.db_instance import SalaryFieldConfig
+            field_count = self.db.query(SalaryFieldConfig).count()
+            salary_enabled = field_count > 0
+        except:
+            salary_enabled = False
+        
         # 工资管理卡片
-        self.create_feature_card(
-            cards_frame, 0, 1,
-            "工资管理",
-            "导入工资数据并发送工资条\n支持批量发送和状态跟踪",
-            self.icons.get('salary'),
-            self.show_salary_manage,
-            "#2196F3"
-        )
+        if salary_enabled:
+            # 工资项配置存在，正常显示
+            self.create_feature_card(
+                cards_frame, 0, 1,
+                "工资管理",
+                "导入工资数据并发送工资条\n支持批量发送和状态跟踪",
+                self.icons.get('salary'),
+                self.show_salary_manage,
+                "#2196F3"
+            )
+        else:
+            # 工资项配置不存在，显示为灰色状态
+            self.create_feature_card(
+                cards_frame, 0, 1,
+                "工资管理",
+                "需要先配置工资项模板\n点击前往配置",
+                self.icons.get('salary'),
+                self.show_salary_config_reminder,
+                "#999999"  # 灰色
+            )
         
         # 邮件设置卡片
         self.create_feature_card(
@@ -716,6 +850,45 @@ class CTKHomePage(ctk.CTk):
     def show_salary_manage(self):
         """显示工资管理窗口"""
         try:
+            # 检查工资项配置是否存在
+            from salary_mail.db_instance import SalaryFieldConfig
+            field_count = self.db.query(SalaryFieldConfig).count()
+            
+            if field_count == 0:
+                # 工资项配置为空，提示用户先配置
+                from salary_mail.ctk_components import CTKMessageBox
+                result = CTKMessageBox.ask_yes_no(
+                    self,
+                    '配置提醒',
+                    '检测到工资项配置为空，需要先配置工资项模板。\n\n'
+                    '工资项配置将决定工资管理模块的显示内容。\n\n'
+                    '是否现在前往配置？'
+                )
+                
+                if result == "是":
+                    # 打开工资项配置窗口
+                    from salary_mail.ctk_salary_config import CTKSalaryConfigWin
+                    config_window = CTKSalaryConfigWin(self)
+                    config_window.wait_window()
+                    
+                    # 配置完成后再次尝试打开工资管理窗口
+                    field_count = self.db.query(SalaryFieldConfig).count()
+                    if field_count > 0:
+                        # 刷新工资管理卡片状态
+                        self.refresh_salary_card()
+                        self.show_salary_manage()  # 递归调用
+                        return
+                    else:
+                        CTKMessageBox.show_info(
+                            self,
+                            '提示',
+                            '工资项配置未完成，请先完成配置后再使用工资管理功能。'
+                        )
+                        return
+                else:
+                    return
+            
+            # 工资项配置存在，正常打开工资管理窗口
             if self.open_windows.get('salary') and self.open_windows['salary'].winfo_exists():
                 self.open_windows['salary'].focus_force()
                 return
@@ -769,6 +942,20 @@ class CTKHomePage(ctk.CTk):
         except Exception as e:
             print(f"打开信息管理窗口失败: {e}")
             self.open_windows['info'] = None
+    
+    def show_salary_config(self):
+        """显示工资项配置窗口"""
+        try:
+            if self.open_windows.get('salary_config') and self.open_windows['salary_config'].winfo_exists():
+                self.open_windows['salary_config'].focus_force()
+                return
+            from salary_mail.ctk_salary_config import CTKSalaryConfigWin
+            dialog = CTKSalaryConfigWin(parent=self)
+            self.open_windows['salary_config'] = dialog
+            dialog.protocol("WM_DELETE_WINDOW", lambda: self._on_dialog_close('salary_config'))
+        except Exception as e:
+            print(f"打开工资项配置窗口失败: {e}")
+            self.open_windows['salary_config'] = None
     
     def _on_dialog_close(self, window_key):
         """处理窗口关闭"""
